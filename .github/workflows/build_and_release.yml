@@ -33,6 +33,9 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
 
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
       - name: Set environment variables
         run: echo SCRIPTS_PATH=$(pwd) >> $GITHUB_ENV
 
