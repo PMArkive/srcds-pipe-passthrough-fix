@@ -17,6 +17,7 @@
     <a href="https://github.com/tsuza/srcds-pipe-passthrough-fix/network">
     <img alt="GitHub forks" src="https://img.shields.io/github/forks/tsuza/srcds-pipe-passthrough-fix?color=9cf&label=forks">
     </a>
+    <img alt="GitHub Workflow" src="https://img.shields.io/github/actions/workflow/status/tsuza/srcds-pipe-passthrough-fix/build_and_release.yml">
   </p>
 </div>
 
