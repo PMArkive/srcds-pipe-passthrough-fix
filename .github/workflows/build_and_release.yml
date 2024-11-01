@@ -58,7 +58,9 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
 
       - name: Rename the binary
-        run: mv target/${{ matrix.target }}/release/srcds-fix.exe target/${{ matrix.target }}/release/srcds-fix-${{ matrix.bin-suffix }}.exe
+        run: |
+          Remove-Item target/${{ matrix.target }}/release/srcds-fix-${{ matrix.bin-suffix }}.exe -Force
+          Move-Item target/${{ matrix.target }}/release/srcds-fix.exe target/${{ matrix.target }}/release/srcds-fix-${{ matrix.bin-suffix }}.exe
 
       - name: Upload the artifacts
         uses: actions/upload-artifact@v3
