@@ -52,7 +52,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: manual
-          artifacts: "target/release/SPDependy.exe,target/release/SPDependy"
+          artifacts: "target/release/srcds-fix.exe"
           body: ${{ steps.changelog.outputs.changes }}
           draft: false
           allowUpdates: true
