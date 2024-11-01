@@ -11,12 +11,13 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest]
         include:
           - target: i686-pc-windows-msvc
-            bin-suffix: x86 
+            bin-suffix: x86
+            os: windows-latest
           - target: x86_64-pc-windows-msvc
             bin-suffix: x64
+            os: windows-latest
       fail-fast: false
     permissions:
       contents: write
