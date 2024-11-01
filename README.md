@@ -17,9 +17,6 @@
     <a href="https://github.com/tsuza/srcds-pipe-passthrough-fix/network">
     <img alt="GitHub forks" src="https://img.shields.io/github/forks/tsuza/srcds-pipe-passthrough-fix?color=9cf&label=forks">
     </a>
-    <a href="https://github.com/tsuza/srcds-pipe-passthrough-fix/graphs/contributors">
-      <img src="https://contrib.rocks/image?repo=tsuza/srcds-pipe-passthrough-fix" />
-    </a>
   </p>
 </div>
 
@@ -33,6 +30,6 @@
 3. Run it exactly like yo would run any other srcds.
 
 ## Contributors
-<a href="https://github.com/tsuza/mannager-source/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=tsuza/mannager-source" alt="contrib.rocks image" />
+<a href="https://github.com/tsuza/srcds-pipe-passthrough-fix/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tsuza/srcds-pipe-passthrough-fix" />
 </a>
