@@ -1,21 +1,26 @@
 name: Compile and release
 
 on:
-    workflow_dispatch:
-      inputs:
-        tag:
-          description: "Specify tag to create"
-          required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Specify tag to create"
+        required: true
 
 jobs:
   build:
     strategy:
       matrix:
         os: [windows-latest]
+        include:
+          - target: i686-pc-windows-msvc
+            bin-suffix: x86 
+          - target: x86_64-pc-windows-msvc
+            bin-suffix: x64
       fail-fast: false
     permissions:
       contents: write
-    
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -23,11 +28,13 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
+          target: ${{ matrix.target }}
 
       - name: Set environment variables
         run: echo SCRIPTS_PATH=$(pwd) >> $GITHUB_ENV
-      
+
       - name: Cache cargo registry
         uses: actions/cache@v3
         with:
@@ -40,21 +47,52 @@ jobs:
           path: |
             ~/.cargo/bin/
             target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}-${{ matrix.target }}
 
       - name: Build the rust project
-        run: cargo build --release
-        
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Rename the binary
+        run: mv target/${{ matrix.target }}/release/srcds-fix.exe target/${{ matrix.target }}/release/srcds-fix-${{ matrix.bin-suffix }}.exe
+
+      - name: Upload the artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: srcds-fix-${{ matrix.bin-suffix }}
+          path: target/${{ matrix.target }}/release/srcds-fix-${{ matrix.bin-suffix }}.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: srcds-fix-x86
+          path: ./artifacts/x86
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: srcds-fix-x64
+          path: ./artifacts/x64
+
       - name: Create Release
         uses: ncipollo/release-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: manual
-          artifacts: "target/release/srcds-fix.exe"
-          body: ${{ steps.changelog.outputs.changes }}
+          tag: ${{ github.event.inputs.tag }}
+          artifacts: |
+            ./artifacts/x86/srcds-fix-x86.exe
+            ./artifacts/x64/srcds-fix-x64.exe
+          body: "Automated release for both 32-bit and 64-bit Windows"
           draft: false
+          makeLatest: true
           allowUpdates: true
           prerelease: false
           replacesArtifacts: true
