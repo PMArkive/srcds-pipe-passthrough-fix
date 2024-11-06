@@ -98,6 +98,15 @@ mod kernel32 {
         },
     };
 
+    // We don't actually need it. It seems that there is a bug in retour-utils,
+    // which makes it so that, when compiling for i686-windows-msvc, the first
+    // hook is "non-existent", for whatever reason.
+    // This is basically just a dummy detour that does nothing.
+    #[hook(unsafe extern "system" AllocConsoleHook, symbol = "AllocConsole")]
+    fn alloc_console() -> BOOL {
+        unsafe { AllocConsoleHook.call() }
+    }
+
     #[hook(unsafe extern "system" GetNumberOfConsoleInputEvents, symbol = "GetNumberOfConsoleInputEvents")]
     fn get_number_of_console_input_events(
         _hconsoleinput: HANDLE,
