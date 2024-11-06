@@ -236,7 +236,7 @@ checksum = "7a3d689654af89bdfeba29a914ab6ac0236d382eb3b764f7454dde052f2821f8"
 
 [[package]]
 name = "srcds-fix"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bitflags 2.6.0",
  "minidl",
