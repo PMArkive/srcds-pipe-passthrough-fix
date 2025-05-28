@@ -1,11 +1,11 @@
 #![feature(generic_arg_infer)]
 
 use retour_utils::*;
-use std::env;
 use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_char;
 use std::ptr;
+use std::{env, thread};
 use windows::core::PCSTR;
 use windows::Win32::Foundation::HMODULE;
 use windows::Win32::System::LibraryLoader::GetModuleHandleA;
@@ -36,18 +36,22 @@ const ALLOC_CONSOLE_PATCH: [u8; 7] = [
 ];
 
 fn main() {
-    let _ = unsafe { kernel32::init_detours() };
+    let detour_handle = thread::spawn(|| {
+        let mut patch = memory_patch::MemoryPatch::<_>::from_function(
+            "kernel32.dll",
+            "AllocConsole",
+            0,
+            ALLOC_CONSOLE_PATCH,
+            None,
+        )
+        .unwrap();
 
-    let mut patch = memory_patch::MemoryPatch::<_>::from_function(
-        "kernel32.dll",
-        "AllocConsole",
-        0,
-        ALLOC_CONSOLE_PATCH,
-        None,
-    )
-    .unwrap();
+        patch.enable().unwrap();
 
-    patch.enable().unwrap();
+        let _ = unsafe { kernel32::init_detours().unwrap() };
+    });
+
+    let _ = detour_handle.join();
 
     let instace = unsafe { GetModuleHandleA(None).unwrap() };
     let prev_instance = HMODULE(ptr::null_mut());
@@ -90,35 +94,36 @@ fn main() {
 mod kernel32 {
     use std::ptr;
 
-    use windows::Win32::Storage::FileSystem::ReadFile;
+    use windows::core::BOOL;
+    use windows::Win32::Storage::FileSystem::{GetFileType, ReadFile, FILE_TYPE_PIPE};
+    use windows::Win32::System::Pipes::PeekNamedPipe;
     use windows::Win32::{
-        Foundation::{BOOL, HANDLE},
+        Foundation::HANDLE,
         System::Console::{
             INPUT_RECORD, INPUT_RECORD_0, KEY_EVENT, KEY_EVENT_RECORD, KEY_EVENT_RECORD_0,
         },
     };
 
-    // We don't actually need it. It seems that there is a bug in retour-utils,
-    // which makes it so that, when compiling for i686-windows-msvc, the first
-    // hook is "non-existent", for whatever reason.
-    // This is basically just a dummy detour that does nothing.
-    #[hook(unsafe extern "system" AllocConsoleHook, symbol = "AllocConsole")]
-    fn alloc_console() -> BOOL {
-        unsafe { AllocConsoleHook.call() }
-    }
-
     #[hook(unsafe extern "system" GetNumberOfConsoleInputEvents, symbol = "GetNumberOfConsoleInputEvents")]
     fn get_number_of_console_input_events(
-        _hconsoleinput: HANDLE,
-        _lpc_number_of_events: *mut u32,
+        hconsoleinput: HANDLE,
+        lpc_number_of_events: *mut u32,
     ) -> BOOL {
         // DO NOT REMOVE THE GLOBAL VARIABLE.
         // The only reason it works is because of it.
         // Weirdest workaround ever.
         static mut GLOBAL_BOOL: bool = true;
 
+        let handle_type = unsafe { GetFileType(hconsoleinput) };
+
+        if handle_type != FILE_TYPE_PIPE {
+            return unsafe {
+                GetNumberOfConsoleInputEvents.call(hconsoleinput, lpc_number_of_events)
+            };
+        }
+
         unsafe {
-            ptr::write(_lpc_number_of_events, GLOBAL_BOOL as u32);
+            ptr::write(lpc_number_of_events, GLOBAL_BOOL as u32);
 
             GLOBAL_BOOL = !GLOBAL_BOOL;
         }
@@ -133,10 +138,36 @@ mod kernel32 {
         length: u32,
         lpnumberofeventsread: *mut u32,
     ) -> BOOL {
+        let handle_type = unsafe { GetFileType(hconsoleinput) };
+
+        if handle_type != FILE_TYPE_PIPE {
+            return unsafe {
+                ReadConsoleInputAHook.call(hconsoleinput, lpbuffer, length, lpnumberofeventsread)
+            };
+        }
+
         let mut buf: [u8; 1024] = [0; 1024];
         let mut bytes_read = 0u32;
 
+        let mut available_bytes = 0u32;
+
         unsafe { ptr::write(lpnumberofeventsread, 0) };
+
+        let _ = unsafe {
+            PeekNamedPipe(
+                hconsoleinput,
+                None,
+                0,
+                None,
+                Some(&mut available_bytes),
+                None,
+            )
+            .unwrap()
+        };
+
+        if available_bytes == 0 {
+            return BOOL(1);
+        }
 
         let _ = unsafe { ReadFile(hconsoleinput, Some(&mut buf), Some(&mut bytes_read), None) };
 
